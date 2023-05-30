@@ -27,7 +27,7 @@ exports.verifySignature = function(data, signature, algorithm) {
  */
 exports.generateSessionKey = function(nonce) {
 	var sessionKey = Crypto.randomBytes(32);
-	var cryptedSessionKey = Crypto.publicEncrypt(g_PubkeySystem, Buffer.concat([sessionKey, nonce || new Buffer(0)]));
+	var cryptedSessionKey = Crypto.publicEncrypt(g_PubkeySystem, Buffer.concat([sessionKey, nonce || Buffer.alloc(0)]));
 	return {
 		plain: sessionKey,
 		encrypted: cryptedSessionKey
@@ -61,11 +61,11 @@ exports.symmetricEncrypt = function(input, key, iv) {
 exports.symmetricEncryptWithHmacIv = function(input, key) {
 	// IV is HMAC-SHA1(Random(3) + Plaintext) + Random(3). (Same random values for both)
 	var random = Crypto.randomBytes(3);
-	var hmac = Crypto.createHmac("sha1", key.slice(0, 16)); // we only want the first 16 bytes of the key for the hmac
+	var hmac = Crypto.createHmac("sha1", key.subarray(0, 16)); // we only want the first 16 bytes of the key for the hmac
 	hmac.update(random);
 	hmac.update(input);
 
-	return exports.symmetricEncrypt(input, key, Buffer.concat([hmac.digest().slice(0, 16 - random.length), random])); // the resulting IV must be 16 bytes long, so truncate the hmac to make room for the random
+	return exports.symmetricEncrypt(input, key, Buffer.concat([hmac.digest().subarray(0, 16 - random.length), random])); // the resulting IV must be 16 bytes long, so truncate the hmac to make room for the random
 };
 
 /**
@@ -78,21 +78,19 @@ exports.symmetricEncryptWithHmacIv = function(input, key) {
 exports.symmetricDecrypt = function(input, key, checkHmac) {
 	var aesIv = Crypto.createDecipheriv('aes-256-ecb', key, '');
 	aesIv.setAutoPadding(false);
-	aesIv.end(input.slice(0, 16));
-	var iv = aesIv.read();
+	var iv = Buffer.concat([aesIv.update(input.subarray(0, 16)), aesIv.final()]);
 
 	var aesData = Crypto.createDecipheriv('aes-256-cbc', key, iv);
-	aesData.end(input.slice(16));
-	var plaintext = aesData.read();
+	var plaintext = Buffer.concat([aesData.update(input.subarray(16)), aesData.final()]);
 
 	if (checkHmac) {
 		// The last 3 bytes of the IV are a random value, and the remainder are a partial HMAC
-		var remotePartialHmac = iv.slice(0, iv.length - 3);
-		var random = iv.slice(iv.length - 3, iv.length);
-		var hmac = Crypto.createHmac("sha1", key.slice(0, 16));
+		var remotePartialHmac = iv.subarray(0, iv.length - 3);
+		var random = iv.subarray(iv.length - 3, iv.length);
+		var hmac = Crypto.createHmac("sha1", key.subarray(0, 16));
 		hmac.update(random);
 		hmac.update(plaintext);
-		if (!remotePartialHmac.equals(hmac.digest().slice(0, remotePartialHmac.length))) {
+		if (!remotePartialHmac.equals(hmac.digest().subarray(0, remotePartialHmac.length))) {
 			throw new Error("Received invalid HMAC from remote host.");
 		}
 	}
