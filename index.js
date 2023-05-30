@@ -1,6 +1,11 @@
 var Crypto = require('crypto');
 
-var g_PubkeySystem = require('fs').readFileSync(__dirname + '/system.pem');
+var g_PubkeySystem = Buffer.from(`-----BEGIN PUBLIC KEY-----
+MIGdMA0GCSqGSIb3DQEBAQUAA4GLADCBhwKBgQDf7BrWLBBmLBc1OhSwfFkRf53T
+2Ct64+AVzRkeRuh7h3SiGEYxqQMUeYKO6UWiSRKpI2hzic9pobFhRr3Bvr/WARvY
+gdTckPv+T1JzZsuVcNfFjrocejN1oWI0Rrtgt4Bo+hOneoo3S57G9F1fOpn5nsQ6
+6WOiu4gZKODnFMBCiQIBEQ==
+-----END PUBLIC KEY-----`);
 
 /**
  * Verifies a signature using the Steam "System" public key.
